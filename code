@@ -1,0 +1,112 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+struct Point {
+    int x, y;
+};
+
+struct Patient {
+    char name[100];
+    int age;
+    char *hist; // Dynamically allocated memory for patient history
+    char *loc;  // Dynamically allocated memory for tumor location
+};
+
+void inputPatientData(struct Patient *patient) {
+    printf("Patient Name: ");
+    fgets(patient->name, sizeof(patient->name), stdin);
+    strtok(patient->name, "\n"); // Remove newline character if present
+
+    printf("\nAge: ");
+    scanf("%d", &(patient->age));
+    getchar(); // Clear newline character from input buffer
+
+    printf("\nPrevious Diagnoses/Medical History: ");
+    patient->hist = (char *)malloc(1000 * sizeof(char));
+    fgets(patient->hist, 1000, stdin);
+    strtok(patient->hist, "\n"); // Remove newline character if present
+
+    printf("Location of Tumor: ");
+    patient->loc = (char *)malloc(100 * sizeof(char));
+    fgets(patient->loc, 100, stdin);
+    strtok(patient->loc, "\n"); // Remove newline character if present
+}
+
+int orientation(struct Point p, struct Point q, struct Point r) {
+    int val = (q.y - p.y) * (r.x - q.x) - (q.x - p.x) * (r.y - q.y);
+
+    if (val == 0) return 0; // Collinear
+    return (val > 0) ? 1 : 2; // Clockwise or Counterclockwise
+}
+
+void convexHull(struct Point points[], int n) {
+    if (n < 3) return;
+
+    int hullIndexes[n], hullCount = 0;
+
+    int leftmost = 0;
+    for (int i = 1; i < n; i++) {
+        if (points[i].x < points[leftmost].x)
+            leftmost = i;
+    }
+
+    int p = leftmost, q;
+    do {
+        hullIndexes[hullCount++] = p;
+
+        q = (p + 1) % n;
+        for (int i = 0; i < n; i++) {
+            if (orientation(points[p], points[i], points[q]) == 2)
+                q = i;
+        }
+
+        p = q;
+    } while (p != leftmost);
+
+    printf("Tumor Boundary Points:\n");
+    for (int i = 0; i < hullCount; i++)
+        printf("(%d, %d)\n", points[hullIndexes[i]].x, points[hullIndexes[i]].y);
+
+    // Calculate area using Shoelace formula
+    double area = 0.0;
+    for (int i = 0; i < hullCount - 1; i++) {
+        area += (points[hullIndexes[i]].x * points[hullIndexes[i + 1]].y -
+                 points[hullIndexes[i + 1]].x * points[hullIndexes[i]].y);
+    }
+    area += (points[hullIndexes[hullCount - 1]].x * points[hullIndexes[0]].y -
+             points[hullIndexes[0]].x * points[hullIndexes[hullCount - 1]].y);
+
+    // Absolute value and divide by 2
+    area = abs(area) / 2.0;
+
+    printf("Area covered by the given coordinates: %.2lf mm\n", area); // Corrected the formatting specifier
+}
+
+void freePatientData(struct Patient *patient) {
+    free(patient->hist);
+    free(patient->loc);
+}
+
+int main() {
+    struct Patient patient;
+    inputPatientData(&patient);
+
+    int n;
+    printf("\nEnter the number of coordinates of the tumor: ");
+    scanf("%d", &n);
+    getchar(); // Clear newline character from input buffer
+
+    struct Point points[n];
+    printf("\nEnter tumor coordinates (x y):\n");
+    for (int i = 0; i < n; i++) {
+        scanf("%d %d", &points[i].x, &points[i].y);
+    }
+
+    convexHull(points, n);
+
+    // Free dynamically allocated memory
+    freePatientData(&patient);
+
+    return 0;
+}
